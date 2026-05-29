@@ -5,18 +5,18 @@ info:
     description: >
         API de gestion d'une TODO List.
 servers:
-    -   url: http://localhost:8080
-        description: Serveur local de développement
+    - url: http://localhost:8080
+      description: Serveur local de dÃ©veloppement
 
 tags:
-    -   name: tasks
-        description: Opérations sur les tâches
+    - name: tasks
+      description: OpÃ©rations sur les tÃ¢ches
 
 paths:
     /tasks:
         post:
             tags: [ tasks ]
-            summary: Créer une tâche
+            summary: CrÃ©er une tÃ¢che
             operationId: createTask
             requestBody:
                 required: true
@@ -26,10 +26,10 @@ paths:
                             $ref: '#/components/schemas/Task'
             responses:
                 '201':
-                    description: Tâche créée avec succès
+                    description: TÃ¢che crÃ©Ã©e avec succÃ¨s
                     headers:
                         Location:
-                            description: URL de la ressource créée
+                            description: URL de la ressource crÃ©Ã©e
                             schema:
                                 type: string
                                 example: /tasks/1
@@ -37,35 +37,109 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Task'
+        get:
+            tags: [ tasks ]
+            summary: RÃ©cupÃ©rer toutes les tÃ¢ches
+            description: RÃ©cupÃ©rer toutes les tÃ¢ches
+            responses:
+                '200':
+                    description: TÃ¢ches trouvÃ©es avec succÃ¨s
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Tasks'
+                '404':
+                    description: TÃ¢che non trouvÃ©e
+
+
+
+
+        delete:
+            tags: [ tasks ]
+            summary: Supprime toutes les tÃ¢ches
+            description: Supprime tputes tÃ¢ches
+            responses:
+                '204':
+                    description: TÃ¢che supprimÃ©e avec succÃ¨s
+
+                '404':
+                    description: TÃ¢che non trouvÃ©e
+
 
     /tasks/{id}:
         parameters:
-            -   in: path
-                name: id
-                required: true
-                description: Identifiant numérique de la tâche
-                schema:
-                    type: integer
-                    minimum: 1
+            - in: path
+              name: id
+              required: true
+              description: Identifiant numÃ©rique de la tÃ¢che
+              schema:
+                  type: integer
+                  minimum: 1
         get:
             tags: [ tasks ]
-            summary: Récupérer une tâche
-            description: Récupérer une tâche par son identifiant
+            summary: RÃ©cupÃ©rer une tÃ¢che
+            description: RÃ©cupÃ©rer une tÃ¢che par son identifiant
             operationId: getTaskById
             responses:
                 '200':
-                    description: Tâche trouvée avec succès
+                    description: TÃ¢che trouvÃ©e avec succÃ¨s
                     content:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Task'
                 '404':
-                    description: Tâche non trouvée
+                    description: TÃ¢che non trouvÃ©e
+
+
+        delete:
+            tags: [ tasks ]
+            summary: Supprime une tÃ¢che
+            description: Supprime une tÃ¢che par son identifiant
+            operationId: deleteTaskById
+            responses:
+                '204':
+                    description: TÃ¢che supprimÃ©e avec succÃ¨s
+
+                '404':
+                    description: TÃ¢che non trouvÃ©e
+
+
+        put:
+            tags: [ tasks ]
+            summary: modifie une tÃ¢che
+            description: modifie une tÃ¢che par son identifiant
+            operationId: putTaskById
+            responses:
+                '204':
+                    description: TÃ¢che modifiÃ©e avec succÃ¨s
+
+                '404':
+                    description: TÃ¢che non trouvÃ©e
+    /tasks/count:
+        get:
+            tags: [ tasks ]
+            summary: Nombre de tÃ¢che
+            description: renvoie le nombre de tÃ¢ches
+            responses:
+                '200':
+                    description: Nombre de tÃ¢che comptÃ©e avec succÃ¨s
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Task'
+
+                '404':
+                    description: TÃ¢che non trouvÃ©e
+
+
+
+
+
 components:
     schemas:
         Task:
             type: object
-            description: Représentation d'une tâche
+            description: ReprÃ©sentation d'une tÃ¢che
             properties:
                 id:
                     type: integer
@@ -77,7 +151,7 @@ components:
                 description:
                     type: string
                     nullable: true
-                    example: 2L demi-écrémé
+                    example: 2L demi-Ã©crÃ©mÃ©
                 done:
                     type: boolean
                     nullable: false
@@ -85,3 +159,37 @@ components:
             required:
                 - id
                 - title
+                -
+
+        Task2:
+            type: object
+            description: ReprÃ©sentation d'une autre tÃ¢che
+            properties:
+                id:
+                    type: integer
+                    example: 2
+                title:
+                    type: string
+                    nullable: false
+                    example: Acheter de cÃ©rÃ©ales
+                description:
+                    type: string
+                    nullable: true
+                    example: chocapic
+                done:
+                    type: boolean
+                    nullable: false
+                    example: false
+            required:
+                - id
+                - title
+
+        Tasks:
+            type: array
+            items:
+                oneOf:
+                    - $ref: "#/components/schemas/Task"
+                    - $ref: "#/components/schemas/Task2"
+
+
+
