@@ -20,17 +20,31 @@ import java.util.regex.Pattern;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.nonNull;
 
+/**
+ * Couche Présentation (Controller).
+ * Gère le routage HTTP, l'extraction du JSON, la validation des entrées (400 Bad Request),
+ * et la gestion globale des erreurs (500 Internal Server Error).
+ */
 public class TaskController {
 
     private static final Logger log = LoggerFactory.getLogger(TaskController.class);
+
+    // Expression régulière pour extraire l'ID numérique à la fin de l'URL (ex: /tasks/12)
     private static final Pattern ID_PATH = Pattern.compile("^/tasks/([0-9]+)$");
+
     private final TaskService taskService;
 
     public TaskController() {
         this.taskService = new TaskService();
     }
 
-    // Validation des règles métier (400)
+    /**
+     * Valide les contraintes de taille et de format des entrées de l'utilisateur.
+     * S'assure que les règles du contrat d'interface (DTO) sont respectées.
+     * * @param title       Le titre fourni.
+     * @param description La description fournie.
+     * @return Un {@link ErrorResponseDto} s'il y a une erreur, ou null si tout est valide.
+     */
     private ErrorResponseDto validateTaskInput(String title, String description) {
         if (title == null || title.isBlank()) {
             return new ErrorResponseDto("title", "Le titre est obligatoire et ne peut pas être vide.");
@@ -44,17 +58,24 @@ public class TaskController {
         return null;
     }
 
+    /**
+     * Méthode principale de gestion des requêtes HTTP.
+     * Redirige le traitement selon le verbe HTTP (GET, POST, etc.) et le chemin de l'URL.
+     * * @param exchange Le contexte de la requête et de la réponse HTTP.
+     * @throws IOException En cas de problème de lecture/écriture des flux réseau.
+     */
     public void handleTasks(HttpExchange exchange) throws IOException {
         String method = exchange.getRequestMethod();
         String path = exchange.getRequestURI().getPath();
         Matcher m = ID_PATH.matcher(path);
 
         try {
-            // POST /tasks
+            // === Endpoint : Créer une tâche ===
             if ("POST".equals(method) && "/tasks".equals(path)) {
                 String body = new String(exchange.getRequestBody().readAllBytes(), UTF_8);
                 TaskCreationDto input = JsonUtils.deserialize(body, TaskCreationDto.class);
 
+                // Vérification de la validité des données
                 ErrorResponseDto validationError = validateTaskInput(input.title(), input.description());
                 if (validationError != null) {
                     sendResponse(exchange, 400, JsonUtils.serialize(validationError));
@@ -62,42 +83,45 @@ public class TaskController {
                 }
 
                 TaskResponseDto createdTask = taskService.createTask(input);
+
+                // Code 201 (Created) + En-tête Location pointant vers la nouvelle ressource
                 exchange.getResponseHeaders().add("Location", "/tasks/" + createdTask.id());
                 sendResponse(exchange, 201, JsonUtils.serialize(createdTask));
                 return;
             }
 
-            // GET /tasks/{id}
+            // === Endpoint : Lire une tâche par ID ===
             if ("GET".equals(method) && m.matches()) {
-                int id = Integer.parseInt(m.group(1));
+                int id = Integer.parseInt(m.group(1)); // Extraction du groupe capturé par la Regex
                 Optional<TaskResponseDto> task = taskService.getTaskById(id);
+
                 if (task.isPresent()) {
                     sendResponse(exchange, 200, JsonUtils.serialize(task.get()));
                 } else {
-                    sendResponse(exchange, 404, null);
+                    sendResponse(exchange, 404, null); // Code 404 (Not Found)
                 }
                 return;
             }
 
-            // GET /tasks
+            // === Endpoint : Lire toutes les tâches ===
             if ("GET".equals(method) && "/tasks".equals(path)) {
                 List<TaskResponseDto> tasks = taskService.getAllTasks();
                 sendResponse(exchange, 200, JsonUtils.serialize(tasks));
                 return;
             }
 
-            // DELETE /tasks/{id}
+            // === Endpoint : Supprimer une tâche ===
             if ("DELETE".equals(method) && m.matches()) {
                 int id = Integer.parseInt(m.group(1));
                 if (taskService.deleteTask(id)) {
-                    sendResponse(exchange, 204, null);
+                    sendResponse(exchange, 204, null); // Code 204 (No Content) pour une suppression réussie
                 } else {
                     sendResponse(exchange, 404, null);
                 }
                 return;
             }
 
-            // PUT /tasks/{id}
+            // === Endpoint : Mettre à jour une tâche ===
             if ("PUT".equals(method) && m.matches()) {
                 int id = Integer.parseInt(m.group(1));
                 String body = new String(exchange.getRequestBody().readAllBytes(), UTF_8);
@@ -118,7 +142,7 @@ public class TaskController {
                 return;
             }
 
-            // DELETE /tasks
+            // === Endpoint : Supprimer toutes les tâches ===
             if ("DELETE".equals(method) && "/tasks".equals(path)) {
                 if (taskService.deleteAllTasks()) {
                     sendResponse(exchange, 204, null);
@@ -128,22 +152,31 @@ public class TaskController {
                 return;
             }
 
-            // GET /tasks/count
+            // === Endpoint : Compter les tâches ===
             if ("GET".equals(method) && "/tasks/count".equals(path)) {
                 int count = taskService.countTasks();
                 sendResponse(exchange, 200, JsonUtils.serialize(count));
                 return;
             }
 
+            // Si aucune combinaison Verbe/URL ne correspond, on retourne 404
             sendResponse(exchange, 404, null);
 
         } catch (Exception e) {
-            // Étape 4 : Gestion globale des erreurs inattendues (Code 500)
+            // === Gestion Globale des Erreurs ===
+            // Capture toutes les exceptions inattendues (ex: JSON malformé, base de données corrompue)
             log.error("Erreur inattendue du serveur : ", e);
             sendResponse(exchange, 500, "{\"error\": \"Erreur interne du serveur\"}");
         }
     }
 
+    /**
+     * Formate et envoie la réponse HTTP au client.
+     * * @param exchange Le contexte de communication.
+     * @param status   Le code de statut HTTP (200, 201, 204, 400, 404, 500).
+     * @param json     Le corps de la réponse formaté en JSON (ou null s'il n'y a pas de corps).
+     * @throws IOException En cas de problème d'écriture réseau.
+     */
     private void sendResponse(HttpExchange exchange, int status, String json) throws IOException {
         if (nonNull(json)) {
             exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
@@ -153,6 +186,7 @@ public class TaskController {
                 os.write(bytes);
             }
         } else {
+            // Un contenu vide est signalé avec la taille -1 dans les versions récentes de Java
             exchange.sendResponseHeaders(status, -1);
             exchange.close();
         }
