@@ -6,16 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 
-/**
- * JSON serialization and deserialization utility class.
- */
 public final class JsonUtils {
-
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-    private JsonUtils() {
-    }
+    private JsonUtils() {}
 
     public static String serialize(Object o) throws JsonProcessingException {
         return MAPPER.writeValueAsString(o);

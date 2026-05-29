@@ -1,11 +1,14 @@
 package com.example.todoapp.presentation;
 
 import com.example.todoapp.dao.JsonUtils;
+import com.example.todoapp.dto.ErrorResponseDto;
 import com.example.todoapp.dto.TaskCreationDto;
 import com.example.todoapp.dto.TaskResponseDto;
 import com.example.todoapp.dto.TaskUpdateDto;
 import com.example.todoapp.service.TaskService;
 import com.sun.net.httpserver.HttpExchange;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -19,11 +22,26 @@ import static java.util.Objects.nonNull;
 
 public class TaskController {
 
+    private static final Logger log = LoggerFactory.getLogger(TaskController.class);
     private static final Pattern ID_PATH = Pattern.compile("^/tasks/([0-9]+)$");
     private final TaskService taskService;
 
     public TaskController() {
         this.taskService = new TaskService();
+    }
+
+    // Validation des règles métier (400)
+    private ErrorResponseDto validateTaskInput(String title, String description) {
+        if (title == null || title.isBlank()) {
+            return new ErrorResponseDto("title", "Le titre est obligatoire et ne peut pas être vide.");
+        }
+        if (title.length() > 50) {
+            return new ErrorResponseDto("title", "La taille maximale du titre est de 50 caractères.");
+        }
+        if (description != null && description.length() > 255) {
+            return new ErrorResponseDto("description", "La taille maximale de la description est de 255 caractères.");
+        }
+        return null;
     }
 
     public void handleTasks(HttpExchange exchange) throws IOException {
@@ -37,8 +55,13 @@ public class TaskController {
                 String body = new String(exchange.getRequestBody().readAllBytes(), UTF_8);
                 TaskCreationDto input = JsonUtils.deserialize(body, TaskCreationDto.class);
 
-                TaskResponseDto createdTask = taskService.createTask(input);
+                ErrorResponseDto validationError = validateTaskInput(input.title(), input.description());
+                if (validationError != null) {
+                    sendResponse(exchange, 400, JsonUtils.serialize(validationError));
+                    return;
+                }
 
+                TaskResponseDto createdTask = taskService.createTask(input);
                 exchange.getResponseHeaders().add("Location", "/tasks/" + createdTask.id());
                 sendResponse(exchange, 201, JsonUtils.serialize(createdTask));
                 return;
@@ -48,7 +71,6 @@ public class TaskController {
             if ("GET".equals(method) && m.matches()) {
                 int id = Integer.parseInt(m.group(1));
                 Optional<TaskResponseDto> task = taskService.getTaskById(id);
-
                 if (task.isPresent()) {
                     sendResponse(exchange, 200, JsonUtils.serialize(task.get()));
                 } else {
@@ -60,21 +82,14 @@ public class TaskController {
             // GET /tasks
             if ("GET".equals(method) && "/tasks".equals(path)) {
                 List<TaskResponseDto> tasks = taskService.getAllTasks();
-
-                if (!tasks.isEmpty()) {
-                    sendResponse(exchange, 200, JsonUtils.serialize(tasks));
-                } else {
-                    sendResponse(exchange, 404, null); // Ou 200 avec tableau vide []
-                }
+                sendResponse(exchange, 200, JsonUtils.serialize(tasks));
                 return;
             }
 
             // DELETE /tasks/{id}
             if ("DELETE".equals(method) && m.matches()) {
                 int id = Integer.parseInt(m.group(1));
-                boolean deleted = taskService.deleteTask(id);
-
-                if (deleted) {
+                if (taskService.deleteTask(id)) {
                     sendResponse(exchange, 204, null);
                 } else {
                     sendResponse(exchange, 404, null);
@@ -88,8 +103,13 @@ public class TaskController {
                 String body = new String(exchange.getRequestBody().readAllBytes(), UTF_8);
                 TaskUpdateDto input = JsonUtils.deserialize(body, TaskUpdateDto.class);
 
-                Optional<TaskResponseDto> updatedTask = taskService.updateTask(id, input);
+                ErrorResponseDto validationError = validateTaskInput(input.title(), input.description());
+                if (validationError != null) {
+                    sendResponse(exchange, 400, JsonUtils.serialize(validationError));
+                    return;
+                }
 
+                Optional<TaskResponseDto> updatedTask = taskService.updateTask(id, input);
                 if (updatedTask.isPresent()) {
                     sendResponse(exchange, 204, null);
                 } else {
@@ -100,8 +120,7 @@ public class TaskController {
 
             // DELETE /tasks
             if ("DELETE".equals(method) && "/tasks".equals(path)) {
-                boolean allDeleted = taskService.deleteAllTasks();
-                if (allDeleted) {
+                if (taskService.deleteAllTasks()) {
                     sendResponse(exchange, 204, null);
                 } else {
                     sendResponse(exchange, 404, null);
@@ -112,24 +131,16 @@ public class TaskController {
             // GET /tasks/count
             if ("GET".equals(method) && "/tasks/count".equals(path)) {
                 int count = taskService.countTasks();
-                if (count != 0) {
-                    sendResponse(exchange, 200, JsonUtils.serialize(count));
-                } else {
-                    sendResponse(exchange, 404, JsonUtils.serialize(0));
-                }
+                sendResponse(exchange, 200, JsonUtils.serialize(count));
                 return;
             }
 
-            // Si aucune route ne correspond
             sendResponse(exchange, 404, null);
 
-        } catch (IllegalArgumentException e) {
-            // Règle de validation métier non respectée (ex: titre > 50 chars)
-            sendResponse(exchange, 400, "{\"error\": \"" + e.getMessage() + "\"}");
         } catch (Exception e) {
-            // Erreur serveur globale ou problème de parsing JSON
-            e.printStackTrace();
-            sendResponse(exchange, 500, null);
+            // Étape 4 : Gestion globale des erreurs inattendues (Code 500)
+            log.error("Erreur inattendue du serveur : ", e);
+            sendResponse(exchange, 500, "{\"error\": \"Erreur interne du serveur\"}");
         }
     }
 
@@ -142,7 +153,7 @@ public class TaskController {
                 os.write(bytes);
             }
         } else {
-            exchange.sendResponseHeaders(status, -1); // -1 indique qu'il n'y a pas de body en Java 11+
+            exchange.sendResponseHeaders(status, -1);
             exchange.close();
         }
     }

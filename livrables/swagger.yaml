@@ -1,195 +1,177 @@
-openapi: 3.0.3
+openapi: 3.0.0
 info:
-    title: TODO API
+    title: Todo App API
     version: 1.0.0
-    description: >
-        API de gestion d'une TODO List.
+    description: API de gestion des tâches
 servers:
     - url: http://localhost:8080
-      description: Serveur local de dÃ©veloppement
-
-tags:
-    - name: tasks
-      description: OpÃ©rations sur les tÃ¢ches
-
 paths:
     /tasks:
+        get:
+            summary: Récupérer toutes les tâches
+            responses:
+                '200':
+                    description: Liste des tâches
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/TaskResponseDto'
+                '500':
+                    description: Erreur serveur
         post:
-            tags: [ tasks ]
-            summary: CrÃ©er une tÃ¢che
-            operationId: createTask
+            summary: Créer une tâche
             requestBody:
                 required: true
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/Task'
+                            $ref: '#/components/schemas/TaskCreationDto'
             responses:
                 '201':
-                    description: TÃ¢che crÃ©Ã©e avec succÃ¨s
-                    headers:
-                        Location:
-                            description: URL de la ressource crÃ©Ã©e
-                            schema:
-                                type: string
-                                example: /tasks/1
+                    description: Tâche créée
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/Task'
-        get:
-            tags: [ tasks ]
-            summary: RÃ©cupÃ©rer toutes les tÃ¢ches
-            description: RÃ©cupÃ©rer toutes les tÃ¢ches
-            responses:
-                '200':
-                    description: TÃ¢ches trouvÃ©es avec succÃ¨s
+                                $ref: '#/components/schemas/TaskResponseDto'
+                '400':
+                    description: Erreur de validation (ex. titre > 50 caractères)
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/Tasks'
-                '404':
-                    description: TÃ¢che non trouvÃ©e
-
-
-
-
+                                $ref: '#/components/schemas/ErrorResponseDto'
+                '500':
+                    description: Erreur serveur
         delete:
-            tags: [ tasks ]
-            summary: Supprime toutes les tÃ¢ches
-            description: Supprime tputes tÃ¢ches
+            summary: Supprimer toutes les tâches
             responses:
                 '204':
-                    description: TÃ¢che supprimÃ©e avec succÃ¨s
-
-                '404':
-                    description: TÃ¢che non trouvÃ©e
-
+                    description: Tâches supprimées
+                '500':
+                    description: Erreur serveur
 
     /tasks/{id}:
-        parameters:
-            - in: path
-              name: id
-              required: true
-              description: Identifiant numÃ©rique de la tÃ¢che
-              schema:
-                  type: integer
-                  minimum: 1
         get:
-            tags: [ tasks ]
-            summary: RÃ©cupÃ©rer une tÃ¢che
-            description: RÃ©cupÃ©rer une tÃ¢che par son identifiant
-            operationId: getTaskById
+            summary: Récupérer une tâche par son ID
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
             responses:
                 '200':
-                    description: TÃ¢che trouvÃ©e avec succÃ¨s
+                    description: Détails de la tâche
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/Task'
+                                $ref: '#/components/schemas/TaskResponseDto'
                 '404':
-                    description: TÃ¢che non trouvÃ©e
-
-
-        delete:
-            tags: [ tasks ]
-            summary: Supprime une tÃ¢che
-            description: Supprime une tÃ¢che par son identifiant
-            operationId: deleteTaskById
-            responses:
-                '204':
-                    description: TÃ¢che supprimÃ©e avec succÃ¨s
-
-                '404':
-                    description: TÃ¢che non trouvÃ©e
-
-
+                    description: Tâche non trouvée
+                '500':
+                    description: Erreur serveur
         put:
-            tags: [ tasks ]
-            summary: modifie une tÃ¢che
-            description: modifie une tÃ¢che par son identifiant
-            operationId: putTaskById
+            summary: Mettre à jour une tâche
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/TaskUpdateDto'
             responses:
                 '204':
-                    description: TÃ¢che modifiÃ©e avec succÃ¨s
-
+                    description: Tâche mise à jour
+                '400':
+                    description: Erreur de validation
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponseDto'
                 '404':
-                    description: TÃ¢che non trouvÃ©e
+                    description: Tâche non trouvée
+                '500':
+                    description: Erreur serveur
+        delete:
+            summary: Supprimer une tâche
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                '204':
+                    description: Tâche supprimée
+                '404':
+                    description: Tâche non trouvée
+                '500':
+                    description: Erreur serveur
+
     /tasks/count:
         get:
-            tags: [ tasks ]
-            summary: Nombre de tÃ¢che
-            description: renvoie le nombre de tÃ¢ches
+            summary: Obtenir le nombre total de tâches
             responses:
                 '200':
-                    description: Nombre de tÃ¢che comptÃ©e avec succÃ¨s
+                    description: Le compte des tâches
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/Task'
-
-                '404':
-                    description: TÃ¢che non trouvÃ©e
-
-
-
-
+                                type: integer
+                '500':
+                    description: Erreur serveur
 
 components:
     schemas:
-        Task:
+        TaskCreationDto:
             type: object
-            description: ReprÃ©sentation d'une tÃ¢che
+            required:
+                - title
+            properties:
+                title:
+                    type: string
+                    maxLength: 50
+                description:
+                    type: string
+                    maxLength: 255
+
+        TaskUpdateDto:
+            type: object
+            required:
+                - title
+                - done
+            properties:
+                title:
+                    type: string
+                    maxLength: 50
+                description:
+                    type: string
+                    maxLength: 255
+                done:
+                    type: boolean
+
+        TaskResponseDto:
+            type: object
             properties:
                 id:
                     type: integer
-                    example: 1
                 title:
                     type: string
-                    nullable: false
-                    example: Acheter du lait
                 description:
                     type: string
-                    nullable: true
-                    example: 2L demi-Ã©crÃ©mÃ©
                 done:
                     type: boolean
-                    nullable: false
-                    example: false
-            required:
-                - id
-                - title
-                -
 
-        Task2:
+        ErrorResponseDto:
             type: object
-            description: ReprÃ©sentation d'une autre tÃ¢che
             properties:
-                id:
-                    type: integer
-                    example: 2
-                title:
+                field:
                     type: string
-                    nullable: false
-                    example: Acheter de cÃ©rÃ©ales
-                description:
+                message:
                     type: string
-                    nullable: true
-                    example: chocapic
-                done:
-                    type: boolean
-                    nullable: false
-                    example: false
-            required:
-                - id
-                - title
-
-        Tasks:
-            type: array
-            items:
-                oneOf:
-                    - $ref: "#/components/schemas/Task"
-                    - $ref: "#/components/schemas/Task2"
-
-
-

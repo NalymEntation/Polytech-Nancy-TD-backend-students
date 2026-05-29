@@ -1,4 +1,4 @@
 package com.example.todoapp.dto;
 
-public class ErrorResponseDto {
+public record ErrorResponseDto(String field, String message) {
 }

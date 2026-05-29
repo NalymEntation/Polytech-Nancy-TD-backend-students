@@ -7,9 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Data Access Object for {@link Task} model using SQLite.
- */
 public class TaskDao {
 
     private static final String DB_URL = "jdbc:sqlite:todoapp.db";
@@ -30,7 +27,7 @@ public class TaskDao {
              Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
         } catch (SQLException e) {
-            System.err.println("Erreur d'initialisation de la BDD : " + e.getMessage());
+            System.err.println("Erreur d'initialisation BDD : " + e.getMessage());
         }
     }
 
@@ -56,30 +53,25 @@ public class TaskDao {
 
             try (ResultSet rs = pstmt.getGeneratedKeys()) {
                 if (rs.next()) {
-                    int generatedId = rs.getInt(1);
-                    return new Task(generatedId, task.title(), task.description(), task.done());
+                    return new Task(rs.getInt(1), task.title(), task.description(), task.done());
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erreur lors de l'insertion : " + e.getMessage());
+            throw new RuntimeException("Erreur BDD lors de l'insertion", e);
         }
-        return task; // Retourne la tâche sans ID en cas d'échec SQL (cas rare)
+        return task;
     }
 
     public Optional<Task> findById(int id) {
         String sql = "SELECT id, title, description, done FROM tasks WHERE id = ?";
-
         try (Connection conn = DriverManager.getConnection(DB_URL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
             pstmt.setInt(1, id);
             try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(mapRowToTask(rs));
-                }
+                if (rs.next()) return Optional.of(mapRowToTask(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Erreur lors de la recherche : " + e.getMessage());
+            throw new RuntimeException("Erreur BDD lecture", e);
         }
         return Optional.empty();
     }
@@ -87,16 +79,12 @@ public class TaskDao {
     public List<Task> findall() {
         List<Task> tasks = new ArrayList<>();
         String sql = "SELECT id, title, description, done FROM tasks";
-
         try (Connection conn = DriverManager.getConnection(DB_URL);
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                tasks.add(mapRowToTask(rs));
-            }
+            while (rs.next()) tasks.add(mapRowToTask(rs));
         } catch (SQLException e) {
-            System.err.println("Erreur lors du findall : " + e.getMessage());
+            throw new RuntimeException("Erreur BDD findall", e);
         }
         return tasks;
     }
@@ -108,28 +96,24 @@ public class TaskDao {
             pstmt.setInt(1, id);
             return pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Erreur lors de la suppression : " + e.getMessage());
-            return 0;
+            throw new RuntimeException("Erreur BDD suppression", e);
         }
     }
 
     public Optional<Task> modif(int id, Task task) {
         String sql = "UPDATE tasks SET title = ?, description = ?, done = ? WHERE id = ?";
-
         try (Connection conn = DriverManager.getConnection(DB_URL);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
             pstmt.setString(1, task.title());
             pstmt.setString(2, task.description());
             pstmt.setInt(3, task.done() ? 1 : 0);
             pstmt.setInt(4, id);
 
-            int rowsAffected = pstmt.executeUpdate();
-            if (rowsAffected > 0) {
+            if (pstmt.executeUpdate() > 0) {
                 return Optional.of(new Task(id, task.title(), task.description(), task.done()));
             }
         } catch (SQLException e) {
-            System.err.println("Erreur lors de la modification : " + e.getMessage());
+            throw new RuntimeException("Erreur BDD modification", e);
         }
         return Optional.empty();
     }
@@ -140,7 +124,7 @@ public class TaskDao {
              Statement stmt = conn.createStatement()) {
             stmt.executeUpdate(sql);
         } catch (SQLException e) {
-            System.err.println("Erreur lors de la suppression totale : " + e.getMessage());
+            throw new RuntimeException("Erreur BDD suppression totale", e);
         }
         return new ArrayList<>();
     }
@@ -150,11 +134,9 @@ public class TaskDao {
         try (Connection conn = DriverManager.getConnection(DB_URL);
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
-            if (rs.next()) {
-                return rs.getInt(1);
-            }
+            if (rs.next()) return rs.getInt(1);
         } catch (SQLException e) {
-            System.err.println("Erreur lors du comptage : " + e.getMessage());
+            throw new RuntimeException("Erreur BDD count", e);
         }
         return 0;
     }
