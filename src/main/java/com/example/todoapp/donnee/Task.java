@@ -1,11 +1,7 @@
 package com.example.todoapp.donnee;
 
 /**
- * Task model.
- * @param id            task identifier
- * @param title         task title
- * @param description   task description
- * @param done          task accomplishment status (false by default)
+ * Task model for Database representation.
  */
 public record Task(Integer id, String title, String description, boolean done) {
 }

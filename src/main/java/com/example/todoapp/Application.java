@@ -1,24 +1,5 @@
 package com.example.todoapp;
 
-import com.example.todoapp.dao.JsonUtils;
-import com.example.todoapp.dao.TaskDao;
-import com.example.todoapp.donnee.Task;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Objects.nonNull;
-
 import com.example.todoapp.presentation.TaskController;
 import com.sun.net.httpserver.HttpServer;
 import org.slf4j.Logger;
@@ -34,7 +15,9 @@ public class Application {
     private static final Logger log = LoggerFactory.getLogger(Application.class);
 
     public static void main(String[] args) throws Exception {
-        // Initialisation de la couche Controller (qui initialise elle-même le reste)
+        log.info("Initialisation de l'application...");
+
+        // Initialisation de la couche Controller (qui initialise le Service et le DAO)
         TaskController taskController = new TaskController();
 
         // Création du serveur HTTP
@@ -46,6 +29,6 @@ public class Application {
         server.setExecutor(null);
         server.start();
 
-        log.info("HTTP server started on http://localhost:8080");
+        log.info("Serveur HTTP démarré sur http://localhost:8080");
     }
 }

@@ -1,7 +1,9 @@
 package com.example.todoapp.presentation;
 
 import com.example.todoapp.dao.JsonUtils;
-import com.example.todoapp.donnee.Task;
+import com.example.todoapp.dto.TaskCreationDto;
+import com.example.todoapp.dto.TaskResponseDto;
+import com.example.todoapp.dto.TaskUpdateDto;
 import com.example.todoapp.service.TaskService;
 import com.sun.net.httpserver.HttpExchange;
 
@@ -21,7 +23,6 @@ public class TaskController {
     private final TaskService taskService;
 
     public TaskController() {
-        // Instanciation de la couche métier
         this.taskService = new TaskService();
     }
 
@@ -33,8 +34,10 @@ public class TaskController {
         try {
             // POST /tasks
             if ("POST".equals(method) && "/tasks".equals(path)) {
-                Task input = JsonUtils.deserialize(new String(exchange.getRequestBody().readAllBytes(), UTF_8), Task.class);
-                Task createdTask = taskService.createTask(input);
+                String body = new String(exchange.getRequestBody().readAllBytes(), UTF_8);
+                TaskCreationDto input = JsonUtils.deserialize(body, TaskCreationDto.class);
+
+                TaskResponseDto createdTask = taskService.createTask(input);
 
                 exchange.getResponseHeaders().add("Location", "/tasks/" + createdTask.id());
                 sendResponse(exchange, 201, JsonUtils.serialize(createdTask));
@@ -44,7 +47,7 @@ public class TaskController {
             // GET /tasks/{id}
             if ("GET".equals(method) && m.matches()) {
                 int id = Integer.parseInt(m.group(1));
-                Optional<Task> task = taskService.getTaskById(id);
+                Optional<TaskResponseDto> task = taskService.getTaskById(id);
 
                 if (task.isPresent()) {
                     sendResponse(exchange, 200, JsonUtils.serialize(task.get()));
@@ -56,12 +59,12 @@ public class TaskController {
 
             // GET /tasks
             if ("GET".equals(method) && "/tasks".equals(path)) {
-                List<Task> tasks = taskService.getAllTasks();
+                List<TaskResponseDto> tasks = taskService.getAllTasks();
 
                 if (!tasks.isEmpty()) {
                     sendResponse(exchange, 200, JsonUtils.serialize(tasks));
                 } else {
-                    sendResponse(exchange, 404, null);
+                    sendResponse(exchange, 404, null); // Ou 200 avec tableau vide []
                 }
                 return;
             }
@@ -83,8 +86,9 @@ public class TaskController {
             if ("PUT".equals(method) && m.matches()) {
                 int id = Integer.parseInt(m.group(1));
                 String body = new String(exchange.getRequestBody().readAllBytes(), UTF_8);
-                Task t = JsonUtils.deserialize(body, Task.class);
-                Optional<Task> updatedTask = taskService.updateTask(id, t);
+                TaskUpdateDto input = JsonUtils.deserialize(body, TaskUpdateDto.class);
+
+                Optional<TaskResponseDto> updatedTask = taskService.updateTask(id, input);
 
                 if (updatedTask.isPresent()) {
                     sendResponse(exchange, 204, null);
@@ -116,12 +120,16 @@ public class TaskController {
                 return;
             }
 
-            // Otherwise 404
+            // Si aucune route ne correspond
             sendResponse(exchange, 404, null);
 
+        } catch (IllegalArgumentException e) {
+            // Règle de validation métier non respectée (ex: titre > 50 chars)
+            sendResponse(exchange, 400, "{\"error\": \"" + e.getMessage() + "\"}");
         } catch (Exception e) {
+            // Erreur serveur globale ou problème de parsing JSON
             e.printStackTrace();
-            sendResponse(exchange, 500, null); // En cas d'erreur de parsing ou serveur
+            sendResponse(exchange, 500, null);
         }
     }
 
@@ -134,7 +142,7 @@ public class TaskController {
                 os.write(bytes);
             }
         } else {
-            exchange.sendResponseHeaders(status, 0);
+            exchange.sendResponseHeaders(status, -1); // -1 indique qu'il n'y a pas de body en Java 11+
             exchange.close();
         }
     }
