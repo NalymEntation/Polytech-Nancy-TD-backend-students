@@ -1,0 +1,6 @@
+com.example.todoapp
+com.example.todoapp.dao
+com.example.todoapp.donnee
+com.example.todoapp.dto
+com.example.todoapp.presentation
+com.example.todoapp.service

@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html","k":"18"},{"l":"com.example.todoapp"},{"l":"com.example.todoapp.dao"},{"l":"com.example.todoapp.donnee"},{"l":"com.example.todoapp.dto"},{"l":"com.example.todoapp.presentation"},{"l":"com.example.todoapp.service"}];updateSearchResults();
